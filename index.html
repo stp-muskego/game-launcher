@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Done With Your Work? — St. Paul's Game Launcher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EEF2F7;
+    --ink:#1B2A41;
+    --ink-soft:#4A5B72;
+    --card:#FFFFFF;
+    --green:#2E7D4F;
+    --yellow:#C98A00;
+    --yellow-soft:#FFF6DF;
+    --line:#D4DDE8;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Nunito Sans',sans-serif;
+    background:var(--paper);
+    background-image:linear-gradient(var(--line) 1px, transparent 1px),
+                     linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:28px 28px;
+    color:var(--ink);
+    min-height:100vh;
+  }
+  .wrap{max-width:1060px;margin:0 auto;padding:28px 20px 80px}
+
+  /* ---------- Header ---------- */
+  header{
+    background:var(--card);
+    border:2px solid var(--ink);
+    border-radius:var(--radius);
+    padding:22px 26px;
+    display:flex;flex-wrap:wrap;gap:18px;align-items:center;justify-content:space-between;
+    box-shadow:4px 4px 0 var(--ink);
+  }
+  .title-block h1{
+    font-family:'Baloo 2',cursive;font-weight:800;font-size:1.9rem;line-height:1.1;
+  }
+  .title-block p{color:var(--ink-soft);font-size:.95rem;margin-top:4px}
+
+  .signal{display:flex;flex-direction:column;gap:6px;background:var(--ink);padding:8px;border-radius:10px}
+  .signal span{width:16px;height:16px;border-radius:50%;display:block}
+  .signal .g{background:#3FBF77}
+  .signal .y{background:#FFC93C}
+  .signal .r{background:#5A6B80}
+  .header-left{display:flex;align-items:center;gap:16px}
+
+  .grade-toggle{display:flex;background:var(--paper);border:2px solid var(--ink);border-radius:999px;overflow:hidden}
+  .grade-toggle button{
+    font-family:'Baloo 2',cursive;font-weight:700;font-size:1rem;
+    padding:10px 22px;border:none;background:transparent;color:var(--ink);cursor:pointer;
+  }
+  .grade-toggle button[aria-pressed="true"]{background:var(--ink);color:#fff}
+  .grade-toggle button:focus-visible{outline:3px solid var(--yellow);outline-offset:-3px}
+
+  /* ---------- Section headers ---------- */
+  .tier-head{display:flex;align-items:center;gap:12px;margin:42px 0 6px}
+  .light{width:22px;height:22px;border-radius:50%;border:2px solid var(--ink);flex-shrink:0}
+  .light.green{background:#3FBF77}
+  .light.yellow{background:#FFC93C}
+  .tier-head h2{font-family:'Baloo 2',cursive;font-weight:800;font-size:1.5rem}
+  .tier-sub{color:var(--ink-soft);margin:0 0 18px 34px;font-size:.95rem}
+
+  /* ---------- Category & cards ---------- */
+  .category{font-family:'Baloo 2',cursive;font-weight:700;font-size:1.02rem;color:var(--ink-soft);
+    letter-spacing:.03em;margin:22px 0 10px;display:flex;align-items:center;gap:10px}
+  .category::after{content:"";flex:1;height:2px;background:var(--line)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+  .tile{
+    display:block;background:var(--card);border:2px solid var(--ink);border-radius:var(--radius);
+    padding:14px 16px;text-decoration:none;color:var(--ink);
+    transition:transform .12s ease, box-shadow .12s ease;
+    box-shadow:3px 3px 0 var(--ink);
+  }
+  .tile:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--ink)}
+  .tile:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
+  .tile h3{font-family:'Baloo 2',cursive;font-weight:700;font-size:1.08rem;margin-bottom:3px}
+  .tile p{font-size:.85rem;color:var(--ink-soft);line-height:1.35}
+  .badge{display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.05em;
+    padding:2px 8px;border-radius:999px;margin-top:8px}
+  .badge.g68{background:var(--paper);border:1.5px solid var(--ink-soft);color:var(--ink-soft)}
+
+  /* Bonus board (hidden unless switched on) */
+  #bonusSection{display:none}
+  .bonus-zone{
+    background:var(--yellow-soft);
+    border:3px dashed var(--yellow);
+    border-radius:var(--radius);
+    padding:20px;
+  }
+  .bonus-zone .tile{box-shadow:3px 3px 0 var(--yellow)}
+  .bonus-zone .tile:hover{box-shadow:5px 5px 0 var(--yellow)}
+  .bonus-banner{
+    font-family:'Baloo 2',cursive;font-weight:800;font-size:1.5rem;
+    display:flex;align-items:center;gap:12px;margin:42px 0 6px;
+  }
+
+  /* ---------- Teacher panel ---------- */
+  details.teachers{margin-top:56px;background:var(--card);border:2px solid var(--line);border-radius:var(--radius);padding:18px 22px}
+  details.teachers summary{font-family:'Baloo 2',cursive;font-weight:700;cursor:pointer;font-size:1.05rem}
+  details.teachers ol{margin:14px 0 0 22px;line-height:1.7;font-size:.93rem}
+  details.teachers code{background:var(--paper);padding:2px 6px;border-radius:6px;font-size:.85rem}
+  .sheet-status{margin-top:10px;font-size:.85rem;color:var(--ink-soft);font-style:italic}
+
+  .empty-note{color:var(--ink-soft);font-style:italic;padding:10px 0}
+
+  @media (prefers-reduced-motion: reduce){
+    .tile{transition:none}
+  }
+  @media (max-width:560px){
+    header{padding:18px}
+    .title-block h1{font-size:1.5rem}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="header-left">
+      <div class="signal" aria-hidden="true"><span class="g"></span><span class="y"></span><span class="r"></span></div>
+      <div class="title-block">
+        <h1>Done With Your Work?</h1>
+        <p>Approved games &amp; activities · St. Paul's Lutheran School</p>
+      </div>
+    </div>
+    <div class="grade-toggle" role="group" aria-label="Choose grade band">
+      <button id="btn35" aria-pressed="true" onclick="setBand('3-5')">Grades 3–5</button>
+      <button id="btn68" aria-pressed="false" onclick="setBand('6-8')">Grades 6–8</button>
+    </div>
+  </header>
+
+  <!-- MAIN BOARD: everything visible here is a yes -->
+  <div class="tier-head"><span class="light green" aria-hidden="true"></span><h2>The Game Board</h2></div>
+  <p class="tier-sub">These are approved games during free time if and when the teacher allows them.</p>
+  <div id="greenZone"></div>
+
+  <!-- BONUS BOARD: invisible unless the switch is on -->
+  <div id="bonusSection">
+    <div class="bonus-banner"><span class="light yellow" aria-hidden="true"></span>Bonus Board — open today!</div>
+    <p class="tier-sub">Special-occasion games. Enjoy them while the board is open!</p>
+    <div class="bonus-zone" id="bonusZone"></div>
+  </div>
+
+  <!-- TEACHER PANEL -->
+  <details class="teachers">
+    <summary>For teachers: how this list is managed</summary>
+    <ol>
+      <li>The list lives in a Google Sheet. Tab named <code>Games</code>, with row-1 headers: <code>name</code>, <code>url</code>, <code>tier</code>, <code>grades</code>, <code>category</code>, <code>blurb</code>.</li>
+      <li><code>tier</code> is <code>green</code> (always on the board) or <code>bonus</code> (hidden until the Bonus Board is switched on). <code>grades</code> is <code>3-5</code>, <code>6-8</code>, or <code>all</code>.</li>
+      <li><strong>The Bonus Board switch:</strong> a second tab named <code>Settings</code> with <code>bonus</code> in cell A1 and <code>on</code> or <code>off</code> in cell B1. Change that one cell to open or close the Bonus Board schoolwide.</li>
+      <li>One-time setup: in the Sheet, <strong>File → Share → Publish to web</strong>, then paste the sheet's ID (from its URL, between <code>/d/</code> and <code>/edit</code>) into the <code>SHEET_ID</code> line at the top of this page's code.</li>
+      <li>After that: adding a game = adding a row. Hiding a game = changing one cell. No code, ever.</li>
+    </ol>
+    <p class="sheet-status" id="sheetStatus">Currently using the built-in game list (no sheet connected).</p>
+  </details>
+
+</div>
+
+<script>
+/* =====================================================
+   CONFIG
+   SHEET_ID: paste your published Google Sheet ID here to
+   take over the list. Leave "" to use the built-in list.
+   BONUS_DEFAULT: only matters before a sheet is connected.
+   Set to true to show the Bonus Board, false to hide it.
+   ===================================================== */
+const SHEET_ID = "";
+const BONUS_DEFAULT = false;
+
+/* Built-in list (used until a sheet is connected) */
+const DEFAULT_GAMES = [
+  // --- Words & Vocabulary ---
+  {name:"Wordle", url:"https://www.nytimes.com/games/wordle/index.html", tier:"green", grades:"all", category:"Words & Vocabulary", blurb:"The daily word puzzle. One per day keeps it quick."},
+  {name:"NYT Connections", url:"https://www.nytimes.com/games/connections", tier:"green", grades:"6-8", category:"Words & Vocabulary", blurb:"Sort 16 words into four hidden groups."},
+  {name:"Knoword", url:"https://knoword.com", tier:"green", grades:"6-8", category:"Words & Vocabulary", blurb:"Guess the word from its definition, against the clock."},
+  {name:"Freerice", url:"https://freerice.com", tier:"green", grades:"all", category:"Words & Vocabulary", blurb:"Vocabulary quiz that donates rice for right answers."},
+
+  // --- Geography ---
+  {name:"Seterra Geography", url:"https://www.geoguessr.com/seterra", tier:"green", grades:"all", category:"Geography", blurb:"Map quizzes: countries, capitals, states, flags."},
+  {name:"Worldle", url:"https://worldle.teuteuf.fr", tier:"green", grades:"all", category:"Geography", blurb:"Guess the country from its shape. One per day."},
+  {name:"Globle", url:"https://globle-game.com", tier:"green", grades:"all", category:"Geography", blurb:"Find the mystery country — warmer means closer."},
+
+  // --- Logic & Puzzles ---
+  {name:"Sudoku (NYT)", url:"https://www.nytimes.com/puzzles/sudoku", tier:"green", grades:"all", category:"Logic & Puzzles", blurb:"Classic number logic in easy, medium, and hard."},
+  {name:"KenKen Daily", url:"https://www.kenkenpuzzle.com/game", tier:"green", grades:"all", category:"Logic & Puzzles", blurb:"Sudoku's cousin with math operations built in."},
+  {name:"SET Daily Puzzle", url:"https://www.setgame.com/set/puzzle", tier:"green", grades:"all", category:"Logic & Puzzles", blurb:"Find the sets — pattern logic, one puzzle a day."},
+  {name:"Crossword Mini (NYT)", url:"https://www.nytimes.com/crosswords/game/mini", tier:"green", grades:"6-8", category:"Logic & Puzzles", blurb:"A bite-size daily crossword."},
+
+  // --- Strategy ---
+  {name:"ChessKid", url:"https://www.chesskid.com", tier:"green", grades:"all", category:"Strategy", blurb:"Chess built for kids — puzzles, lessons, no open chat."},
+
+  // --- Typing ---
+  {name:"TypingClub", url:"https://www.typingclub.com", tier:"green", grades:"all", category:"Typing", blurb:"Straightforward typing lessons and practice."},
+
+  // --- Coding ---
+  {name:"Blockly Games", url:"https://blockly.games", tier:"green", grades:"all", category:"Coding", blurb:"Puzzle-based coding from mazes to music."},
+  {name:"Code.org Hour of Code", url:"https://code.org/learn", tier:"green", grades:"all", category:"Coding", blurb:"Self-guided coding activities of every flavor."},
+
+  // --- Science & Exploration ---
+  {name:"The Deep Sea", url:"https://neal.fun/deep-sea/", tier:"green", grades:"all", category:"Science & Exploration", blurb:"Scroll down to the bottom of the ocean."},
+  {name:"The Size of Space", url:"https://neal.fun/size-of-space/", tier:"green", grades:"all", category:"Science & Exploration", blurb:"From astronaut to observable universe."},
+  {name:"Quick, Draw!", url:"https://quickdraw.withgoogle.com", tier:"green", grades:"all", category:"Science & Exploration", blurb:"Doodle while an AI guesses what you're drawing."},
+
+  // --- BONUS BOARD (hidden until switched on) ---
+  {name:"Nitro Type", url:"https://www.nitrotype.com", tier:"bonus", grades:"all", category:"Bonus", blurb:"Typing races! Earn cars while you build speed."},
+  {name:"Semantris", url:"https://research.google.com/semantris/", tier:"bonus", grades:"all", category:"Bonus", blurb:"Type related words fast — Google's AI word game."},
+  {name:"Little Alchemy 2", url:"https://littlealchemy2.com", tier:"bonus", grades:"all", category:"Bonus", blurb:"Combine elements to discover hundreds of items."},
+  {name:"The Password Game", url:"https://neal.fun/password-game/", tier:"bonus", grades:"6-8", category:"Bonus", blurb:"An increasingly ridiculous password challenge."},
+  {name:"The Wiki Game", url:"https://www.thewikigame.com", tier:"bonus", grades:"6-8", category:"Bonus", blurb:"Race through Wikipedia links from one article to another."},
+  {name:"Absurd Trolley Problems", url:"https://neal.fun/absurd-trolley-problems/", tier:"bonus", grades:"6-8", category:"Bonus", blurb:"Philosophy dilemmas for middle schoolers."}
+];
+
+let games = DEFAULT_GAMES;
+let bonusOn = BONUS_DEFAULT;
+let band = "3-5";
+
+function setBand(b){
+  band = b;
+  document.getElementById("btn35").setAttribute("aria-pressed", b==="3-5");
+  document.getElementById("btn68").setAttribute("aria-pressed", b==="6-8");
+  render();
+}
+
+function visible(g){
+  const gr = (g.grades||"all").trim();
+  return gr==="all" || gr===band;
+}
+
+function tile(g){
+  const badge = (g.grades||"all")!=="all" ? `<span class="badge g68">Grades ${g.grades}</span>` : "";
+  return `<a class="tile" href="${g.url}" target="_blank" rel="noopener">
+    <h3>${g.name}</h3><p>${g.blurb||""}</p>${badge}</a>`;
+}
+
+function render(){
+  const green = games.filter(g=>g.tier==="green" && visible(g));
+  const bonus = games.filter(g=>g.tier==="bonus" && visible(g));
+
+  const cats = [...new Set(green.map(g=>g.category||"Games"))];
+  let html = "";
+  for(const c of cats){
+    html += `<div class="category">${c}</div><div class="grid">` +
+            green.filter(g=>(g.category||"Games")===c).map(tile).join("") + `</div>`;
+  }
+  document.getElementById("greenZone").innerHTML = html || `<p class="empty-note">Nothing here yet for this grade band.</p>`;
+
+  const section = document.getElementById("bonusSection");
+  if(bonusOn && bonus.length){
+    section.style.display = "block";
+    document.getElementById("bonusZone").innerHTML = `<div class="grid">${bonus.map(tile).join("")}</div>`;
+  }else{
+    section.style.display = "none";
+  }
+}
+
+/* ---------- Google Sheet override ---------- */
+function parseGviz(text){
+  return JSON.parse(text.substring(text.indexOf("{"), text.lastIndexOf("}")+1));
+}
+
+async function fetchTab(tab){
+  const res = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${tab}`);
+  return parseGviz(await res.text());
+}
+
+async function loadSheet(){
+  if(!SHEET_ID){ render(); return; }
+  try{
+    const json = await fetchTab("Games");
+    const cols = json.table.cols.map(c=>(c.label||"").toLowerCase().trim());
+    const rows = json.table.rows.map(r=>{
+      const obj = {};
+      cols.forEach((c,i)=>{ obj[c] = r.c[i] ? String(r.c[i].v).trim() : ""; });
+      return obj;
+    }).filter(g=>g.name && g.url);
+    if(rows.length){
+      games = rows;
+      document.getElementById("sheetStatus").textContent =
+        `Connected to Google Sheet — showing ${rows.length} games from the sheet.`;
+    }
+  }catch(e){
+    document.getElementById("sheetStatus").textContent =
+      "Couldn't reach the Google Sheet — showing the built-in list instead. Check that the sheet is published to the web.";
+    render(); return;
+  }
+  /* Settings tab: bonus switch */
+  try{
+    const s = await fetchTab("Settings");
+    for(const r of s.table.rows){
+      const key = r.c[0] ? String(r.c[0].v).toLowerCase().trim() : "";
+      const val = r.c[1] ? String(r.c[1].v).toLowerCase().trim() : "";
+      if(key === "bonus"){
+        bonusOn = ["on","yes","true","1"].includes(val);
+      }
+    }
+  }catch(e){ /* no Settings tab yet — bonus stays off */ }
+  render();
+}
+
+loadSheet();
+</script>
+</body>
+</html>
