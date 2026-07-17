@@ -16,6 +16,8 @@
     --yellow:#C98A00;
     --yellow-soft:#FFF6DF;
     --line:#D4DDE8;
+    --deep:#2C4A73;        /* darker blue — best for 6-8 */
+    --light-35:#DCEAF7;    /* soft blue — best for 3-5 */
     --radius:14px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -51,13 +53,13 @@
   .signal .r{background:#5A6B80}
   .header-left{display:flex;align-items:center;gap:16px}
 
-  .grade-toggle{display:flex;background:var(--paper);border:2px solid var(--ink);border-radius:999px;overflow:hidden}
-  .grade-toggle button{
-    font-family:'Baloo 2',cursive;font-weight:700;font-size:1rem;
-    padding:10px 22px;border:none;background:transparent;color:var(--ink);cursor:pointer;
-  }
-  .grade-toggle button[aria-pressed="true"]{background:var(--ink);color:#fff}
-  .grade-toggle button:focus-visible{outline:3px solid var(--yellow);outline-offset:-3px}
+  /* legend / key */
+  .key{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+  .key-item{display:flex;align-items:center;gap:7px;font-size:.85rem;font-weight:600;color:var(--ink-soft)}
+  .swatch{width:16px;height:16px;border-radius:5px;border:2px solid var(--ink);display:block}
+  .sw-all{background:var(--card)}
+  .sw-68{background:var(--deep)}
+  .sw-35{background:var(--light-35)}
 
   /* ---------- Section headers ---------- */
   .tier-head{display:flex;align-items:center;gap:12px;margin:42px 0 6px}
@@ -83,8 +85,15 @@
   .tile h3{font-family:'Baloo 2',cursive;font-weight:700;font-size:1.08rem;margin-bottom:3px}
   .tile p{font-size:.85rem;color:var(--ink-soft);line-height:1.35}
   .badge{display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.05em;
-    padding:2px 8px;border-radius:999px;margin-top:8px}
-  .badge.g68{background:var(--paper);border:1.5px solid var(--ink-soft);color:var(--ink-soft)}
+    padding:2px 8px;border-radius:999px;margin-top:8px;
+    background:var(--paper);border:1.5px solid var(--ink-soft);color:var(--ink-soft)}
+
+  /* grade shading */
+  .tile.g68{background:var(--deep)}
+  .tile.g68 h3{color:#fff}
+  .tile.g68 p{color:#D7E3F2}
+  .tile.g68 .badge{background:rgba(255,255,255,.15);border-color:#A9C2DE;color:#fff}
+  .tile.g35{background:var(--light-35)}
 
   /* Bonus board (hidden unless switched on) */
   #bonusSection{display:none}
@@ -130,9 +139,10 @@
         <p>Approved games &amp; activities · St. Paul's Lutheran School</p>
       </div>
     </div>
-    <div class="grade-toggle" role="group" aria-label="Choose grade band">
-      <button id="btn35" aria-pressed="true" onclick="setBand('3-5')">Grades 3–5</button>
-      <button id="btn68" aria-pressed="false" onclick="setBand('6-8')">Grades 6–8</button>
+    <div class="key" aria-label="Color key">
+      <span class="key-item"><span class="swatch sw-all" aria-hidden="true"></span>Any grade</span>
+      <span class="key-item"><span class="swatch sw-68" aria-hidden="true"></span>Best for 6–8</span>
+      <span class="key-item"><span class="swatch sw-35" aria-hidden="true"></span>Best for 3–5</span>
     </div>
   </header>
 
@@ -171,7 +181,7 @@
    BONUS_DEFAULT: only matters before a sheet is connected.
    Set to true to show the Bonus Board, false to hide it.
    ===================================================== */
-const SHEET_ID = "1OpRyLHrz9awYkUF-cMuaKpFZxfIv_DgPzwybEo8X98M";
+const SHEET_ID = "";
 const BONUS_DEFAULT = false;
 
 /* Built-in list (used until a sheet is connected) */
@@ -219,29 +229,25 @@ const DEFAULT_GAMES = [
 
 let games = DEFAULT_GAMES;
 let bonusOn = BONUS_DEFAULT;
-let band = "3-5";
 
-function setBand(b){
-  band = b;
-  document.getElementById("btn35").setAttribute("aria-pressed", b==="3-5");
-  document.getElementById("btn68").setAttribute("aria-pressed", b==="6-8");
-  render();
-}
-
-function visible(g){
-  const gr = (g.grades||"all").trim();
-  return gr==="all" || gr===band;
+function gradeOf(g){
+  const gr = String(g.grades||"all").trim().toLowerCase();
+  if(gr.startsWith("6")) return "6-8";
+  if(gr.startsWith("3")) return "3-5";
+  return "all";
 }
 
 function tile(g){
-  const badge = (g.grades||"all")!=="all" ? `<span class="badge g68">Grades ${g.grades}</span>` : "";
-  return `<a class="tile" href="${g.url}" target="_blank" rel="noopener">
+  const gr = gradeOf(g);
+  const cls = gr==="6-8" ? " g68" : (gr==="3-5" ? " g35" : "");
+  const badge = gr==="all" ? "" : `<span class="badge">Best for ${gr.replace("-","–")}</span>`;
+  return `<a class="tile${cls}" href="${g.url}" target="_blank" rel="noopener">
     <h3>${g.name}</h3><p>${g.blurb||""}</p>${badge}</a>`;
 }
 
 function render(){
-  const green = games.filter(g=>g.tier==="green" && visible(g));
-  const bonus = games.filter(g=>g.tier==="bonus" && visible(g));
+  const green = games.filter(g=>g.tier==="green");
+  const bonus = games.filter(g=>g.tier==="bonus");
 
   const cats = [...new Set(green.map(g=>g.category||"Games"))];
   let html = "";
@@ -249,7 +255,7 @@ function render(){
     html += `<div class="category">${c}</div><div class="grid">` +
             green.filter(g=>(g.category||"Games")===c).map(tile).join("") + `</div>`;
   }
-  document.getElementById("greenZone").innerHTML = html || `<p class="empty-note">Nothing here yet for this grade band.</p>`;
+  document.getElementById("greenZone").innerHTML = html || `<p class="empty-note">No games on the board yet.</p>`;
 
   const section = document.getElementById("bonusSection");
   if(bonusOn && bonus.length){
