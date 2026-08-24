@@ -16,8 +16,8 @@
     --yellow:#C98A00;
     --yellow-soft:#FFF6DF;
     --line:#D4DDE8;
-    --deep:#2C4A73;        /* darker blue — best for 6-8 */
-    --light-35:#DCEAF7;    /* soft blue — best for 3-5 */
+    --band68:#1F6FB2;      /* border accent — best for 6-8 */
+    --band35:#2E7D4F;      /* border accent — best for 3-5 */
     --radius:14px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -56,10 +56,10 @@
   /* legend / key */
   .key{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
   .key-item{display:flex;align-items:center;gap:7px;font-size:.85rem;font-weight:600;color:var(--ink-soft)}
-  .swatch{width:16px;height:16px;border-radius:5px;border:2px solid var(--ink);display:block}
-  .sw-all{background:var(--card)}
-  .sw-68{background:var(--deep)}
-  .sw-35{background:var(--light-35)}
+  .swatch{width:16px;height:16px;border-radius:5px;border:2.5px solid var(--ink);
+    background:var(--card);display:block}
+  .sw-68{border-color:var(--band68)}
+  .sw-35{border-color:var(--band35)}
 
   /* ---------- Section headers ---------- */
   .tier-head{display:flex;align-items:center;gap:12px;margin:42px 0 6px}
@@ -102,12 +102,13 @@
     padding:2px 8px;border-radius:999px;margin-top:8px;
     background:var(--paper);border:1.5px solid var(--ink-soft);color:var(--ink-soft)}
 
-  /* grade shading */
-  .tile.g68{background:var(--deep)}
-  .tile.g68 h3{color:#fff}
-  .tile.g68 p{color:#D7E3F2}
-  .tile.g68 .badge{background:rgba(255,255,255,.15);border-color:#A9C2DE;color:#fff}
-  .tile.g35{background:var(--light-35)}
+  /* Grade signal: border + drop shadow only. Interior fill never changes. */
+  .tile.g68{border-color:var(--band68);box-shadow:3px 3px 0 var(--band68)}
+  .tile.g68:hover{box-shadow:5px 5px 0 var(--band68)}
+  .tile.g68 .badge{border-color:var(--band68);color:var(--band68)}
+  .tile.g35{border-color:var(--band35);box-shadow:3px 3px 0 var(--band35)}
+  .tile.g35:hover{box-shadow:5px 5px 0 var(--band35)}
+  .tile.g35 .badge{border-color:var(--band35);color:var(--band35)}
 
   /* Bonus board (hidden unless switched on) */
   #bonusSection{display:none}
@@ -332,11 +333,15 @@ function applyTextSettings(){
 function render(){
   applyTextSettings();
 
-  /* board = off closes the whole board (testing weeks, etc.) */
-  const boardOpen = !("board" in settings) || ["on","yes","true","1"].includes(norm(settings.board));
+  /* board = off closes the whole board (testing weeks, etc.)
+     A blank value means "not set" — the board stays OPEN. Only an explicit
+     off/no/false/0 closes it, so an empty cell can never black out the page. */
+  const boardVal = norm(settings.board);
+  const boardOpen = !boardVal || !["off","no","false","0","closed"].includes(boardVal);
   if(!boardOpen){
     document.getElementById("greenZone").innerHTML =
-      `<p class="empty-note">The game board is closed right now. Check back later!</p>`;
+      `<p class="empty-note">${settings.closedmessage
+         || "The game board is closed right now. Check back later!"}</p>`;
     document.getElementById("bonusSection").style.display = "none";
     return;
   }
