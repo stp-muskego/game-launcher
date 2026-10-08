@@ -154,6 +154,12 @@
     .title-block h1{font-size:1.5rem}
   }
 </style>
+
+<!-- Aggregate, no-login click analytics. No student identity is ever collected —
+     GoatCounter doesn't use cookies and isn't designed to track individuals.
+     Counts are read back publicly by clickcounter.html. -->
+<script data-goatcounter="https://stpmuskego.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -305,8 +311,24 @@ function tile(g){
            `<h3>${g.name}</h3></div>`;
   }
 
-  return `<a class="tile${cls}" href="${g.url}" target="_blank" rel="noopener">
+  /* data-goatcounter-click tags this exact link for GoatCounter's tracker.
+     The label comes straight from the sheet row's name, so any game you add
+     later is tracked automatically. Labeled by NAME ONLY (not category) so
+     re-categorizing a game never splits its count. */
+  const label = clickPath(g);
+  return `<a class="tile${cls}" href="${g.url}" target="_blank" rel="noopener"
+    data-goatcounter-click="${escAttr(label)}"
+    data-goatcounter-title="${escAttr(String(g.name||"").trim())}">
     ${head}<p>${g.blurb||""}</p>${badge}</a>`;
+}
+
+/* MUST stay identical to clickPath() in clickcounter.html, or the counter
+   page will look up the wrong label and show zeros. */
+function clickPath(g){
+  return "/click/" + String(g.name||"").trim().replace(/\//g,"-");
+}
+function escAttr(s){
+  return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
 }
 
 /* ---- helpers for the Settings tab ---- */
@@ -386,6 +408,13 @@ function render(){
     document.getElementById("bonusZone").innerHTML = `<div class="grid">${bonus.map(tile).join("")}</div>`;
   }else{
     section.style.display = "none";
+  }
+
+  /* GoatCounter only attaches click tracking to tiles that exist when its own
+     script loads. Our tiles are drawn after the sheet arrives, so we ask it to
+     bind again. It skips tiles it already bound, so calling this is always safe. */
+  if(window.goatcounter && typeof window.goatcounter.bind_events === "function"){
+    window.goatcounter.bind_events();
   }
 }
 
