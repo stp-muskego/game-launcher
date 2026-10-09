@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Click Counter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito+Sans:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EEF2F7; --ink:#1B2A41; --ink-soft:#4A5B72; --card:#FFFFFF;
+    --line:#D4DDE8; --yellow:#C98A00; --yellow-soft:#FFF6DF;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Nunito Sans',sans-serif;background:var(--paper);color:var(--ink);
+    background-image:linear-gradient(var(--line) 1px, transparent 1px),
+                     linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:28px 28px;min-height:100vh;
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:28px 20px 80px}
+  h1{font-family:'Baloo 2',cursive;font-weight:800;font-size:1.8rem;line-height:1.1}
+  .total{color:var(--ink-soft);font-weight:700;margin:6px 0 20px}
+  ul{
+    list-style:none;background:var(--card);border:2px solid var(--ink);
+    border-radius:14px;box-shadow:4px 4px 0 var(--ink);overflow:hidden;
+  }
+  li{display:flex;justify-content:space-between;align-items:baseline;gap:16px;
+     padding:10px 18px;border-bottom:1px solid var(--line)}
+  li:last-child{border-bottom:none}
+  .name{font-weight:700}
+  .num{font-family:'Baloo 2',cursive;font-weight:800;font-size:1.15rem;font-variant-numeric:tabular-nums}
+  li.zero .name,li.zero .num{color:var(--ink-soft);font-weight:400}
+  .note{color:var(--ink-soft);font-size:.85rem;margin-top:16px}
+  .warn{
+    background:var(--yellow-soft);border:2px solid var(--yellow);border-radius:12px;
+    padding:12px 16px;margin-bottom:18px;font-weight:700;line-height:1.4;
+  }
+  .empty{color:var(--ink-soft);font-style:italic;padding:14px 18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Game Clicks</h1>
+  <p class="total" id="total">Loading…</p>
+  <div id="warn" class="warn" style="display:none"></div>
+  <ul id="list"></ul>
+  <p class="note">Counts can run up to a few hours behind.</p>
+</div>
+
+<script>
+/* Same sheet the launcher reads, so new games appear here automatically. */
+const SHEET_ID = "1OpRyLHrz9awYkUF-cMuaKpFZxfIv_DgPzwybEo8X98M";
+const GC_CODE  = "stpmuskego";
+const CONCURRENCY = 6;
+
+/* MUST stay identical to clickPath() in index.html, or this page will look up
+   the wrong label and show zeros. */
+function clickPath(g){
+  return "/click/" + String(g.name||"").trim().replace(/\//g,"-");
+}
+
+function parseGviz(text){
+  return JSON.parse(text.substring(text.indexOf("{"), text.lastIndexOf("}")+1));
+}
+
+async function loadGames(){
+  const res = await fetch(
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq`
+      + `?tqx=out:json&headers=1&sheet=Games&_=${Date.now()}`,
+    { cache: "no-store" }
+  );
+  const json = parseGviz(await res.text());
+  const cols = json.table.cols.map(c=>(c.label||"").toLowerCase().trim());
+  const rows = json.table.rows.map(r=>{
+    const o = {};
+    cols.forEach((c,i)=>{ o[c] = r.c[i] ? String(r.c[i].v).trim() : ""; });
+    return o;
+  }).filter(g=>g.name && g.url);
+  if(!rows.length) throw new Error("no rows");
+  return rows;
+}
+
+/* GoatCounter's public counter: no password involved. A path that has never
+   been clicked answers 404, which is a real zero. Anything else odd = null. */
+async function getCount(path){
+  const url = `https://${GC_CODE}.goatcounter.com/counter/${encodeURIComponent(path)}.json`;
+  try{
+    const res = await fetch(url);
+    if(res.status === 404) return 0;
+    if(!res.ok) return null;
+    const j = await res.json();
+    const n = parseInt(String(j.count).replace(/\D/g,""), 10);
+    return Number.isNaN(n) ? null : n;
+  }catch(e){ return null; }
+}
+
+async function mapLimit(items, limit, fn){
+  const out = new Array(items.length);
+  let next = 0;
+  async function worker(){
+    while(next < items.length){ const k = next++; out[k] = await fn(items[k], k); }
+  }
+  await Promise.all(Array.from({length: Math.min(limit, items.length)}, worker));
+  return out;
+}
+
+function showWarn(msg){
+  const w = document.getElementById("warn");
+  w.textContent = msg; w.style.display = "block";
+}
+
+async function main(){
+  const totalEl = document.getElementById("total");
+  const list = document.getElementById("list");
+
+  let games;
+  try{ games = await loadGames(); }
+  catch(e){
+    totalEl.textContent = "";
+    showWarn("Couldn't read the game list from the Google Sheet.");
+    return;
+  }
+
+  /* one row per distinct name */
+  const seen = new Set();
+  games = games.filter(g=>{
+    const k = g.name.trim().toLowerCase();
+    if(seen.has(k)) return false; seen.add(k); return true;
+  });
+
+  const counts = await mapLimit(games, CONCURRENCY, g => getCount(clickPath(g)));
+  const rows = games.map((g,i)=>({name:g.name.trim(), n:counts[i]}));
+
+  rows.sort((a,b)=>{
+    if(a.n === null && b.n !== null) return 1;
+    if(b.n === null && a.n !== null) return -1;
+    if(a.n !== b.n) return (b.n||0) - (a.n||0);
+    return a.name.localeCompare(b.name);
+  });
+
+  const failed = rows.filter(r=>r.n === null).length;
+  const total  = rows.reduce((s,r)=>s + (r.n||0), 0);
+  totalEl.textContent = failed === rows.length ? "" : `Total clicks: ${total.toLocaleString()}`;
+
+  if(failed === rows.length){
+    showWarn("Couldn't read any counts. In GoatCounter, open Settings and turn on "
+      + "\u201CAllow adding visitor counts on your website\u201D, then reload this page.");
+  }else if(failed){
+    showWarn(`${failed} count${failed===1?"":"s"} couldn't be read and show as \u2014. Reload to retry.`);
+  }
+
+  list.innerHTML = "";
+  rows.forEach(r=>{
+    const li = document.createElement("li");
+    if(r.n === 0) li.className = "zero";
+    const name = document.createElement("span");
+    name.className = "name"; name.textContent = r.name;
+    const num = document.createElement("span");
+    num.className = "num"; num.textContent = r.n === null ? "\u2014" : r.n.toLocaleString();
+    li.append(name, num);
+    list.appendChild(li);
+  });
+}
+
+main();
+</script>
+</body>
+</html>
