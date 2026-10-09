@@ -21,7 +21,24 @@
   }
   .wrap{max-width:640px;margin:0 auto;padding:28px 20px 80px}
   h1{font-family:'Baloo 2',cursive;font-weight:800;font-size:1.8rem;line-height:1.1}
-  .total{color:var(--ink-soft);font-weight:700;margin:6px 0 20px}
+
+  /* always-visible tip about ad blockers */
+  .hint{
+    background:var(--card);border:2px solid var(--line);border-radius:12px;
+    padding:10px 14px;margin:12px 0 16px;color:var(--ink-soft);font-size:.92rem;line-height:1.4;
+  }
+  .hint strong{color:var(--ink)}
+
+  .bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .total{color:var(--ink-soft);font-weight:700}
+  .sort{display:flex;border:2px solid var(--ink);border-radius:999px;overflow:hidden;background:var(--paper)}
+  .sort button{
+    font-family:'Baloo 2',cursive;font-weight:700;font-size:.9rem;
+    padding:6px 16px;border:none;background:transparent;color:var(--ink);cursor:pointer;
+  }
+  .sort button[aria-pressed="true"]{background:var(--ink);color:#fff}
+  .sort button:focus-visible{outline:3px solid var(--yellow);outline-offset:-3px}
+
   ul{
     list-style:none;background:var(--card);border:2px solid var(--ink);
     border-radius:14px;box-shadow:4px 4px 0 var(--ink);overflow:hidden;
@@ -35,22 +52,34 @@
   .note{color:var(--ink-soft);font-size:.85rem;margin-top:16px}
   .warn{
     background:var(--yellow-soft);border:2px solid var(--yellow);border-radius:12px;
-    padding:12px 16px;margin-bottom:18px;font-weight:700;line-height:1.4;
+    padding:12px 16px;margin-bottom:16px;font-weight:700;line-height:1.4;
   }
-  .empty{color:var(--ink-soft);font-style:italic;padding:14px 18px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Game Clicks</h1>
-  <p class="total" id="total">Loading…</p>
+
+  <p class="hint" id="hint">
+    <strong>Not seeing numbers?</strong> Turn off ad blockers (like uBlock Origin) for this page, then reload.
+  </p>
+
+  <div class="bar">
+    <span class="total" id="total">Loading…</span>
+    <div class="sort" role="group" aria-label="Sort order">
+      <button id="sortClicks" type="button" aria-pressed="true">Most clicks</button>
+      <button id="sortName" type="button" aria-pressed="false">A–Z</button>
+    </div>
+  </div>
+
   <div id="warn" class="warn" style="display:none"></div>
   <ul id="list"></ul>
   <p class="note">Counts can run up to a few hours behind.</p>
 </div>
 
 <script>
-/* Same sheet the launcher reads, so new games appear here automatically. */
+/* Same sheet the launcher reads, so any game added to the sheet shows up here
+   automatically (it simply starts at 0 until someone clicks it). */
 const SHEET_ID = "1OpRyLHrz9awYkUF-cMuaKpFZxfIv_DgPzwybEo8X98M";
 const GC_CODE  = "stpmuskego";
 const CONCURRENCY = 6;
@@ -111,9 +140,47 @@ function showWarn(msg){
   w.textContent = msg; w.style.display = "block";
 }
 
+/* ---- display state ---- */
+let rows = [];            // [{name, n}]  n = number, or null if it couldn't be read
+let mode = "clicks";      // "clicks" = most clicks first, "name" = A–Z
+
+function sortedRows(){
+  const r = rows.slice();
+  if(mode === "name") return r.sort((a,b)=>a.name.localeCompare(b.name));
+  return r.sort((a,b)=>{
+    if(a.n === null && b.n !== null) return 1;
+    if(b.n === null && a.n !== null) return -1;
+    if(a.n !== b.n) return (b.n||0) - (a.n||0);
+    return a.name.localeCompare(b.name);
+  });
+}
+
+function renderList(){
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+  sortedRows().forEach(r=>{
+    const li = document.createElement("li");
+    if(r.n === 0) li.className = "zero";
+    const name = document.createElement("span");
+    name.className = "name"; name.textContent = r.name;
+    const num = document.createElement("span");
+    num.className = "num"; num.textContent = r.n === null ? "\u2014" : r.n.toLocaleString();
+    li.append(name, num);
+    list.appendChild(li);
+  });
+}
+
+function setMode(m){
+  mode = m;
+  document.getElementById("sortClicks").setAttribute("aria-pressed", m === "clicks");
+  document.getElementById("sortName").setAttribute("aria-pressed", m === "name");
+  renderList();
+}
+document.getElementById("sortClicks").addEventListener("click", ()=>setMode("clicks"));
+document.getElementById("sortName").addEventListener("click", ()=>setMode("name"));
+
 async function main(){
   const totalEl = document.getElementById("total");
-  const list = document.getElementById("list");
 
   let games;
   try{ games = await loadGames(); }
@@ -131,37 +198,21 @@ async function main(){
   });
 
   const counts = await mapLimit(games, CONCURRENCY, g => getCount(clickPath(g)));
-  const rows = games.map((g,i)=>({name:g.name.trim(), n:counts[i]}));
-
-  rows.sort((a,b)=>{
-    if(a.n === null && b.n !== null) return 1;
-    if(b.n === null && a.n !== null) return -1;
-    if(a.n !== b.n) return (b.n||0) - (a.n||0);
-    return a.name.localeCompare(b.name);
-  });
+  rows = games.map((g,i)=>({name:g.name.trim(), n:counts[i]}));
 
   const failed = rows.filter(r=>r.n === null).length;
   const total  = rows.reduce((s,r)=>s + (r.n||0), 0);
   totalEl.textContent = failed === rows.length ? "" : `Total clicks: ${total.toLocaleString()}`;
 
   if(failed === rows.length){
-    showWarn("Couldn't read any counts. In GoatCounter, open Settings and turn on "
-      + "\u201CAllow adding visitor counts on your website\u201D, then reload this page.");
+    showWarn("No counts came through. Turn off your ad blocker for this page and reload. "
+      + "If that doesn't help, check that \u201CAllow adding visitor counts on your website\u201D "
+      + "is on in GoatCounter's settings.");
   }else if(failed){
     showWarn(`${failed} count${failed===1?"":"s"} couldn't be read and show as \u2014. Reload to retry.`);
   }
 
-  list.innerHTML = "";
-  rows.forEach(r=>{
-    const li = document.createElement("li");
-    if(r.n === 0) li.className = "zero";
-    const name = document.createElement("span");
-    name.className = "name"; name.textContent = r.name;
-    const num = document.createElement("span");
-    num.className = "num"; num.textContent = r.n === null ? "\u2014" : r.n.toLocaleString();
-    li.append(name, num);
-    list.appendChild(li);
-  });
+  renderList();
 }
 
 main();
